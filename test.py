@@ -71,6 +71,7 @@ def get_results(query_or_error, logger, user):
         except Exception as e:
             logger.error("Error %s in get api call for user %s", str(e), user.first_name)
             api_calls_amount -= 1
+            if api_calls_amount == 0: return None
     return items
 
 def filter_results_by_hostname(items):

@@ -94,7 +94,7 @@ async def extra(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
         "Muchas gracias :) Voy a buscar los restaurantes que te puedan servir...",
     )
-    results = process_query(user, update)
+    results = await process_query(user, update)
     if results is None:
         await update.message.reply_text(
         "No se encontraron resultados para tu búsqueda :( \nVuelve a intentarlo conversando denuevo conmigo! Escribe /comenzar",

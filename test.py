@@ -56,10 +56,10 @@ def hostname_allowed(link):
             return False
     return True
 
-def get_results(query_or_error):
+def get_results(query_or_error, logger, user):
     start = 1
     items = []
-    api_calls_amount = 2
+    api_calls_amount = 10
     #print("Buscando :')")
     while True:
         try:
@@ -71,7 +71,7 @@ def get_results(query_or_error):
             # If made it here, there are results
             break
         except Exception as e:
-            print(f"me cai y el error fue {e}") 
+            logger.error("Error %s in get api call for user %s", str(e), user.first_name)
             api_calls_amount -= 1
     return items
 
@@ -105,14 +105,13 @@ def update_top(ranking_weights, new_weight, new_result):
             ranking_weights[i] = (new_weight, new_result)
             changed = True # Top updated.
 
-def get_ranking(results, query):
+def get_ranking(results, query, logger, user):
     ranking = {} # URL : ( total_weight, { word: weight })
     top_more_weights = [(0, None), 
                         (0, None), 
                         (0, None),
                         (0, None),
                         (0, None) ] # as will be top 5. (Weight Count, Result)
-    top = {}
     for result in results:
         words = {}
         weight_sum = 0
@@ -138,14 +137,12 @@ def get_ranking(results, query):
     #print("\n\n\n TOP:", top_more_weights)
     return top_more_weights
     
-def get_relevant_results(items, query):
+def get_relevant_results(items, query, logger, user):
     if len(items) > 0:
         results = filter_results_by_hostname(items)
-        ranking = get_ranking(results, query)
+        ranking = get_ranking(results, query, logger, user)
         return ranking
-    else: 
-        print("No se encontraron resultados :(")
-    return None
+    return None # No results
 
 def main():
     #print("Hola! Soy el bot Coco, me gustaría ayudarte a encontrar un lugar para comer.")

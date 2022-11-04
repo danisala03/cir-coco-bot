@@ -132,13 +132,17 @@ async def process_query(user, update):
 
     # Query cleaned successfully
     logger.info("Query generated for user %s is %s", user.first_name, query_or_error)
-    items = get_results(query_or_error)
-    await update.message.reply_text(
-        "Dame un minuto más! Sigo pensando que podría serte más útil..."
-    )
-    relevant_results = get_relevant_results(items, query_or_error)
-    if relevant_results is None:
+    items = get_results(query_or_error, logger, user)
+    if items is None:
         logger.info("There were not results found for user %s with query %s", user.first_name, query_or_error)
+        return items
+    else:
+        await update.message.reply_text(
+            "Dame un minuto más! Sigo pensando que podría serte más útil..."
+        )
+    relevant_results = get_relevant_results(items, query_or_error, logger, user)
+    if relevant_results is None:
+        logger.info("There were not relevant results found for user %s with query %s", user.first_name, query_or_error)
         return None
     
     return relevant_results # top 5 answers

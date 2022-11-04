@@ -1,4 +1,5 @@
 import requests
+import os
 
 def get_request(url, params):
     try:
@@ -8,10 +9,7 @@ def get_request(url, params):
         print(e)
 
 def get_key():
-    return "key=AIzaSyCcrvsF7KuFmvOiI1tM1z4ZRuJ86JWWkq8"
-
-def get_other_key():
-    return "key=AIzaSyCZ1BN3THOm7kuefwDbr3F3f6SXfJ39wtc"
+    return "key="+str(os.getenv('API_KEY'))
 
 def get_cx():
     return "cx=416041b5afb9e4692"
@@ -20,7 +18,7 @@ def get_query(query):
     return "q="+query
 
 def get_url(query, start):
-    return f"https://www.googleapis.com/customsearch/v1?{get_other_key()}&{get_cx()}&{get_query(query)}&num=10&start={start}"
+    return f"https://www.googleapis.com/customsearch/v1?{get_key()}&{get_cx()}&{get_query(query)}&num=10&start={start}"
 
 def update_stopword(phrase, stopword):
     """
@@ -59,7 +57,7 @@ def hostname_allowed(link):
 def get_results(query_or_error, logger, user):
     start = 1
     items = []
-    api_calls_amount = 10
+    api_calls_amount = int(os.getenv('API_CALLS_AMOUNT'))
     #print("Buscando :')")
     while True:
         try:

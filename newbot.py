@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # pylint: disable=unused-argument, wrong-import-position
 # This program is dedicated to the public domain under the CC0 license.
+# pip install python-telegram-bot -U --pre !!!!!!!!!!!!!!!!!
 
 """
 First, a few callback functions are defined. Then, those functions are passed to
@@ -88,12 +89,12 @@ async def extra(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     user_info["extra"] = update.message.text if "no" not in update.message.text.lower() else ""
     logger.info(
-        "User %s wants as extras: %f", user.first_name, update.message.text
+        "User %s wants as extras: %s", user.first_name, update.message.text
     )
     await update.message.reply_text(
         "Muchas gracias :) Voy a buscar los restaurantes que te puedan servir...",
     )
-    results = process_query(user)
+    results = process_query(user, update)
     if results is None:
         await update.message.reply_text(
         "No se encontraron resultados para tu búsqueda :( \nVuelve a intentarlo conversando denuevo conmigo! Escribe /comenzar",
@@ -121,7 +122,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
-def process_query(user):
+async def process_query(user, update):
     status, query_or_error = clean_query(user_info["food"].lower(), 
                                         user_info["location"].lower(), 
                                         user_info["extra"].lower())
@@ -132,6 +133,9 @@ def process_query(user):
     # Query cleaned successfully
     logger.info("Query generated for user %s is %s", user.first_name, query_or_error)
     items = get_results(query_or_error)
+    await update.message.reply_text(
+        "Dame un minuto más! Sigo pensando que podría serte más útil..."
+    )
     relevant_results = get_relevant_results(items, query_or_error)
     if relevant_results is None:
         logger.info("There were not results found for user %s with query %s", user.first_name, query_or_error)

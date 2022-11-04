@@ -60,7 +60,7 @@ def get_results(query_or_error):
     start = 1
     items = []
     api_calls_amount = 2
-    print("Buscando :')")
+    #print("Buscando :')")
     while True:
         try:
             for _ in range(api_calls_amount): # Amount of API calls, meaning 10 results per call.
@@ -91,7 +91,7 @@ def update_top(ranking_weights, new_weight, new_result):
     for i,tuple in enumerate(ranking_weights):
         weight_in_top = tuple[0]
         result_in_top = tuple[1]
-        print(f"Comparing {weight_in_top} with type {type(weight_in_top)} and {new_weight} with type {type(new_weight)}")
+        #print(f"Comparing {weight_in_top} with type {type(weight_in_top)} and {new_weight} with type {type(new_weight)}")
         # Move the values if it was updated
         if changed:
             ranking_weights[i] = (tmp_weight, tmp_result)
@@ -117,14 +117,14 @@ def get_ranking(results, query):
         words = {}
         weight_sum = 0
         try:
-            print("\n\nTESTING", result["link"])
+            #print("\n\nTESTING", result["link"])
             data = requests.get(result["link"])
             data = str(data.text).lower()
             for word in query.split(" "):
                 if word == "" or word == "en" or word == " ": continue # ignore
-                print("Testing word", word)
+                #print("Testing word", word)
                 counter = data.count(word.lower())
-                print("Counter:", str(counter))
+                #print("Counter:", str(counter))
                 if counter > 0: # if appears
                     words[word] = counter
                 weight_sum += counter # updating total weight
@@ -132,10 +132,10 @@ def get_ranking(results, query):
             continue # will ignore as there will be several matches
         if len(words) > 0:
             ranking[result["link"]] = (weight_sum, words, result)
-            print("Now testing top with ", str(weight_sum), "for", result["link"])
+            #print("Now testing top with ", str(weight_sum), "for", result["link"])
             update_top(top_more_weights, weight_sum, result)
-    print("\n\n\n Ranking:", ranking)
-    print("\n\n\n TOP:", top_more_weights)
+    #print("\n\n\n Ranking:", ranking)
+    #print("\n\n\n TOP:", top_more_weights)
     return top_more_weights
     
 def get_relevant_results(items, query):
@@ -148,13 +148,13 @@ def get_relevant_results(items, query):
     return None
 
 def main():
-    print("Hola! Soy el bot Coco, me gustaría ayudarte a encontrar un lugar para comer.")
+    #print("Hola! Soy el bot Coco, me gustaría ayudarte a encontrar un lugar para comer.")
     food = input("¿Qué te gustaria comer? ")
     place = input("En que lugar te gustaría que esté ubicado el restaurante? ")
     extras = input("¿Detalles extras que desees del lugar? ")
 
     status, query_or_error = clean_query(food.lower(), place.lower(), extras.lower())
-    print(query_or_error)
+    #print(query_or_error)
     if status:
         items = get_results(query_or_error)
         relevant_results = get_relevant_results(items, query_or_error)

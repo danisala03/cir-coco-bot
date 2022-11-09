@@ -1,30 +1,13 @@
-#!/usr/bin/env python
-# pylint: disable=unused-argument, wrong-import-position
-# This program is dedicated to the public domain under the CC0 license.
-# pip install python-telegram-bot -U --pre !!!!!!!!!!!!!!!!!
-
 """
-First, a few callback functions are defined. Then, those functions are passed to
-the Application and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-
-Usage:
-Example of a bot-user conversation using ConversationHandler.
-Send /start to initiate the conversation.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
+Initial code taken from: https://github.com/python-telegram-bot/python-telegram-bot/tree/master/examples
 """
-
 import logging
-
 from telegram import __version__ as TG_VER
-from test import get_query, clean_query, get_relevant_results, get_results
-
+from retrieval_algorithms import get_query, clean_query, get_relevant_results, get_results
 try:
     from telegram import __version_info__
 except ImportError:
     __version_info__ = (0, 0, 0, 0, 0)  # type: ignore[assignment]
-
 if __version_info__ < (20, 0, 0, "alpha", 1):
     raise RuntimeError(
         f"This example is not compatible with your current PTB version {TG_VER}. To view the "
@@ -46,19 +29,14 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
 user_info = {}
-
-
 FOOD,LOCATION,EXTRA = range(3)
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
         "Hola! Soy el bot Coco, me gustaría ayudarte a encontrar un lugar para comer :)\nCuéntame, ¿que te gustaría comer?",
     )
     return FOOD
-
 
 async def food(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
@@ -96,13 +74,19 @@ async def extra(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     results = await process_query(user, update)
     if results is None:
-        await update.message.reply_text(
-        "No se encontraron resultados para tu búsqueda :( \nVuelve a intentarlo conversando denuevo conmigo! Escribe /comenzar",
+        error_message = ("No se encontraron resultados para tu búsqueda :("+
+                    "\nSi el error persiste, contacta a mi creador: <a href='https://t.me/danisala03'>Daniel Salazar</a>"+
+                    "\nDe lo contrario, inténtalo de nuevo! Escribe /comenzar")
+        await update.message.reply_text( 
+            error_message, 
+            parse_mode="HTML",
+            disable_web_page_preview=True
         )
     else:
         message_with_results = "Tus resultados son los siguientes:\n\n"
         for i in range(len(results)):
-            message_with_results += "\n<b>"+str((i+1))+"</b>. "+results[i][1]["title"]+": <a href='"+results[i][1]["link"]+"'>Ir al sitio web</a>"
+            if results[i][0] != None:
+                message_with_results += "\n<b>"+str((i+1))+"</b>. "+results[i][1]["title"]+": <a href='"+results[i][1]["link"]+"'>Ir al sitio web</a>"
         await update.message.reply_text(
             message_with_results,
             reply_markup=ReplyKeyboardRemove(),
@@ -138,17 +122,21 @@ async def process_query(user, update):
         return items
     else:
         await update.message.reply_text(
-            "Dame un minuto más! Sigo pensando que podría serte más útil..."
+            "Espérame un poco más, aún sigo pensando que podría serte más útil... Podría durar hasta 5 minutos!"
         )
     relevant_results = get_relevant_results(items, query_or_error, logger, user)
-    if relevant_results is None:
+    if relevant_results is None or relevant_results[0][1] == 0: # Error and it was never updated as top 1 has 0 weight
         logger.info("There were not relevant results found for user %s with query %s", user.first_name, query_or_error)
         return None
-    
     return relevant_results # top 5 answers
 
+async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, 
+        text="Hola! Mi propósito es ayudarte a encontrar un restaurante que te pueda gustar. Escribe /comenzar y podremos inciar la conversación."
+        +"\n\nVoy a hacerte 3 preguntas breves y esperaré por tus respuestas para buscar resultados relevantes para ti. Como tip, trata de contestar de froma breve y concisa para darte resultados más exactos ;)")
+
 def main() -> None:
-    """Run the bot."""
     # Create the Application and pass it your bot's token.
     application = Application.builder().token("5564875729:AAGuKGcYErqLLGD_V-JLlcRNoeAMHf9C-s4").build()
     conv_handler = ConversationHandler(
@@ -164,6 +152,8 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
+    help_handl = CommandHandler('ayuda', help_handler)
+    application.add_handler(help_handl)
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()

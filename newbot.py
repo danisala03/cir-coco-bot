@@ -83,10 +83,11 @@ async def extra(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             disable_web_page_preview=True
         )
     else:
+        print(results)
         message_with_results = "Tus resultados son los siguientes:\n\n"
         for i in range(len(results)):
-            if results[i][0] != None:
-                message_with_results += "\n<b>"+str((i+1))+"</b>. "+results[i][1]["title"]+": <a href='"+results[i][1]["link"]+"'>Ir al sitio web</a>"
+            if results[i] == None or results[i][1] == None: break # top ended
+            message_with_results += "\n<b>"+str((i+1))+"</b>. "+results[i][1]["title"]+": <a href='"+results[i][1]["link"]+"'>Ir al sitio web</a>"
         await update.message.reply_text(
             message_with_results,
             reply_markup=ReplyKeyboardRemove(),

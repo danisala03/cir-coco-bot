@@ -6,6 +6,7 @@ a good fit for the user.
 """
 import requests
 import os
+from threading import Thread
 
 """
 Will make the GET requests with the Google API
@@ -83,12 +84,12 @@ def hostname_allowed(link):
     # These sites are removed as they provide tops or information not directly relevant.
     denied_sites_keywords = ["instagram","moovitapp","five","mochil","ihop","economi","miami",
             "new","yelp","tips","ucr","deli","wiki","viaje","travel","facebook","twitter","free",
-            "top","expedia","tiktok","find","search","foursquare", "baix", "trip", "pdf"]
+            "top","expedia","tiktok","find","search","foursquare", "baix", "trip", "pdf", "sale"]
     for keyword in denied_sites_keywords:
         if keyword in link:
             return False
     return True
-    
+
 """ 
 Will get the results by making the get request to the api. Will do it api_calls_amount of times.
 If no results are received, then will return None as an error. Else, will return the array of data.
@@ -105,7 +106,7 @@ def get_results(query, logger, user):
             start += 10 # moves to next page of results
             items += data["items"]
         except Exception as e:
-            # May happen if there are not many results
+            # May happen if there are not many results or qouta exceeded
             logger.warning("Error %s in get api call for user %s", str(e), user.first_name) 
     return items if len(items) > 0 else None
 
@@ -148,27 +149,18 @@ At the end of the process of every result, the program will check if the result 
 results and if thats the case will add it to top_more_weights. Thats a list of tuples (weight, result object) where
 the first value is the top 1 relevant result.
 """
-def get_ranking(results, query, logger, user):
+def get_ranking(top_more_weights, results, query):
     pages_already_seen = [] # avoids repetition
     ranking = {} # { result url : ( total_weight, { word: weight }) }
-    top_more_weights = [(0, None), 
-                        (0, None), 
-                        (0, None),
-                        (0, None),
-                        (0, None) ] # as will be top 5. (Weight Count, Result)
     for result in results:
         words = {}
         weight_sum = 0
         try:
-            print("\n\nEMPEZANDO con",result["link"] )
             if result["displayLink"] in pages_already_seen or not hostname_allowed(result["displayLink"]):
-                print("Voy a ignorar por hostname")
                 continue # ignore as it is repeated or not relevant result
             data = requests.get(result["link"], timeout=3) # GET request
-            print("Ya hice el get request!")
             data = str(data.text).lower() # body response
             for word in query.split(" "):
-                print("Iterando en", word)
                 if word == "" or word == "en" or word == " ": continue # ignore stopwords
                 counter = data.count(word.lower()) # calculate weight of every word in the body
                 if counter > 0:
@@ -176,15 +168,20 @@ def get_ranking(results, query, logger, user):
                 weight_sum += counter # updating total weight
             pages_already_seen.append(result["displayLink"]) 
         except:
-            print("Voy a ignorar por except")
             continue # There was en error with the result. Will ignore it.
 
         if len(words) > 0: # If there were results
             ranking[result["link"]] = (weight_sum, words, result)
             # Check if result is in the top 5 of relevant results
-            print("Voy a updatear el top")
             update_top(top_more_weights, weight_sum, result)
     return top_more_weights
+
+""" 
+Will split list of results to allow parallelism.
+"""
+def split_list(a_list):
+    half = len(a_list)//2
+    return a_list[:half], a_list[half:]
 
 """ 
 Will check if results were received from the API GET general request and if thats the case
@@ -195,11 +192,29 @@ def get_relevant_results(items, query, logger, user):
     if len(items) > 0:
         try:
             logger.info("Starting to get ranking for user %s", user.first_name)
-            ranking = get_ranking(items, query, logger, user)
-            return ranking
+            items1, items2 = split_list(items)
+            ranking1 = [(0, None), 
+                    (0, None), 
+                    (0, None),
+                    (0, None),
+                    (0, None) ] # as will be top 5. (Weight Count, Result)
+            ranking2 = ranking1[:] # Copy
+        
+            # Init threads
+            t1 = Thread(target=get_ranking, args=(ranking1, items1, query,))
+            t2 = Thread(target=get_ranking, args=(ranking2, items2, query,))
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+            # Compare both new rankings
+            for i in range(len(ranking2)): 
+                # This way, ranking2 will be the total ranking
+                update_top(ranking2, ranking1[i][0], ranking1[i][1])
+            return ranking2
         except Exception as e:
-            logger.error("Error %s in get api call for user %s", str(e), user.first_name)
-    return None # No results
+            logger.error("Error %s in get relevant results async for user %s", str(e), user.first_name)
+    return None # No results or invalid
 
 # Only created for testing purposes before telegram connection
 def main():

@@ -8,6 +8,15 @@ import requests
 import os
 from threading import Thread
 
+JSON_RESULTS_SEARCH_API = "items"
+
+# Place API constants
+JSON_RESULTS_PLACE_API = "results"
+JSON_PLACE_NAME_PLACE_API = "name"
+JSON_PLACE_PRICE_STATUS_PLACE_API = "price_level"
+JSON_PLACE_RATING_PLACE_API = "rating"
+JSON_PLACE_WEBSITE_PLACE_API = "website"
+
 """
 Will make the GET requests with the Google API
 """
@@ -25,6 +34,12 @@ def get_key():
     return "key="+str(os.getenv('API_KEY'))
 
 """ 
+Will return the Google API Key thats its set in the environment.
+"""
+def get_search_key():
+    return "key="+str(os.getenv('API_KEY_SEARCH'))
+
+""" 
 Returns the Google Search Engine identifier. Its delimited to only search
 in spanish and inside Costa Rica.
 """
@@ -38,10 +53,22 @@ def get_query(query):
     return "q="+query
 
 """ 
+Returns the query with the requested format.
+"""
+def get_query_place_api(query):
+    return "query="+query
+
+""" 
 Returns the url to make the get request and get the results.
 """
-def get_url(query, start):
-    return f"https://www.googleapis.com/customsearch/v1?{get_key()}&{get_cx()}&{get_query(query)}&num=10&start={start}"
+def get_url_search_api(query, start):
+    return f"https://www.googleapis.com/customsearch/v1?{get_search_key()}&{get_cx()}&{get_query(query)}&num=10&start={start}"
+
+""" 
+Returns the url to make the get request and get the results.
+"""
+def get_url_place_api(query, start):
+    return f"https://maps.googleapis.com/maps/api/place/textsearch/json?{get_query_place_api(query)}&{get_key()}"
 
 """ 
 Removes the stopwords such as innecesary or repeated words in the query. Will return the phrase
@@ -71,7 +98,7 @@ def clean_query(food, place, extras):
             place = remove_stopwords(place, stopword)
             extras = remove_stopwords(extras, stopword)
 
-        query = food + " en " + place + " Costa Rica " + extras
+        query = food + " " + extras + " en Costa Rica " + place
         stopwords_file.close()
         return True, query
     except:
@@ -101,10 +128,10 @@ def get_results(query, logger, user):
     api_calls_amount = int(os.getenv('API_CALLS_AMOUNT'))
     for _ in range(api_calls_amount): # Amount of API calls
         try:
-            url = get_url(query, start)
+            url = get_url_place_api(query, start)
             data = get_request(url, None)
             start += 10 # moves to next page of results
-            items += data["items"]
+            items += data[JSON_RESULTS_PLACE_API]
         except Exception as e:
             # May happen if there are not many results or qouta exceeded
             logger.warning("Error %s in get api call for user %s", str(e), user.first_name) 
@@ -156,22 +183,32 @@ def get_ranking(top_more_weights, results, query):
         words = {}
         weight_sum = 0
         try:
-            if result["displayLink"] in pages_already_seen or not hostname_allowed(result["displayLink"]):
+
+            if (result[JSON_PLACE_NAME_PLACE_API] in pages_already_seen):
                 continue # ignore as it is repeated or not relevant result
-            data = requests.get(result["link"], timeout=3) # GET request
-            data = str(data.text).lower() # body response
+            query_per_restaurant = get_url_search_api(result[JSON_PLACE_NAME_PLACE_API]+"en Costa Rica",10)
+            #print("Primer llamado con consulta: ", query_per_restaurant)
+            response = requests.get(query_per_restaurant,
+                                                     timeout=3).json() # GET request of 
+            #print("Segundo print a", response["items"][0]["link"])
+            data_of_first_page = requests.get(response["items"][0]["link"],
+                                                     timeout=3) # GET request
+            data = str(data_of_first_page.text).lower() # body response
+
             for word in query.split(" "):
-                if word == "" or word == "en" or word == " ": continue # ignore stopwords
+                if word == "" or word == "in" or word == " ": continue # ignore stopwords
                 counter = data.count(word.lower()) # calculate weight of every word in the body
                 if counter > 0:
                     words[word] = counter
                 weight_sum += counter # updating total weight
-            pages_already_seen.append(result["displayLink"]) 
-        except:
+            pages_already_seen.append(result[JSON_PLACE_NAME_PLACE_API]) 
+
+        except Exception as e:
+            print(e)
             continue # There was en error with the result. Will ignore it.
 
         if len(words) > 0: # If there were results
-            ranking[result["link"]] = (weight_sum, words, result)
+            ranking[result[JSON_PLACE_NAME_PLACE_API]] = (weight_sum, words, result)
             # Check if result is in the top 5 of relevant results
             update_top(top_more_weights, weight_sum, result)
     return top_more_weights
@@ -199,7 +236,7 @@ def get_relevant_results(items, query, logger, user):
                     (0, None),
                     (0, None) ] # as will be top 5. (Weight Count, Result)
             ranking2 = ranking1[:] # Copy
-        
+            #return get_ranking(ranking1, items, query)
             # Init threads
             t1 = Thread(target=get_ranking, args=(ranking1, items1, query,))
             t2 = Thread(target=get_ranking, args=(ranking2, items2, query,))

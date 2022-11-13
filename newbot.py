@@ -240,7 +240,8 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(str(os.getenv('BOT_TOKEN'))).build()
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("comenzar", start)],
+        entry_points=[CommandHandler("comenzar", start),
+                        CommandHandler("start", start)],
         states={
             FOOD: [MessageHandler(filters.TEXT, food)],
             LOCATION: [

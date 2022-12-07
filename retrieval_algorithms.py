@@ -44,7 +44,7 @@ Returns the Google Search Engine identifier. Its delimited to only search
 in spanish and inside Costa Rica.
 """
 def get_cx():
-    return "cx=416041b5afb9e4692"
+    return "cx="+str(os.getenv('SEARCHENGINEID'))
 
 """ 
 Returns the query with the requested format.

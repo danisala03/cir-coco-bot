@@ -25,6 +25,7 @@ set API_KEY=<Google Place API Key>
 set API_CALLS_AMOUNT=1
 set API_KEY_SEARCH=<Custom Search JSON API Key>
 set BOT_TOKEN=<Telegram Chatbot Token>
+set SEARCHENGINEID=<Search Engine Id>
 ```
 
 > Linux
@@ -34,6 +35,7 @@ export API_KEY=<Google Place API Key>
 export API_CALLS_AMOUNT=1
 export API_KEY_SEARCH=<Custom Search JSON API Key>
 export BOT_TOKEN=<Telegram Chatbot Token>
+export SEARCHENGINEID=<Search Engine Id>
 ```
 
 Finally, just run the command: ``` py -3 newbot.py```
